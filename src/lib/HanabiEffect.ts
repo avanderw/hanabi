@@ -1,6 +1,8 @@
 import { ParticlePool } from './ParticlePool.js';
 import { Particle } from './Particle.js';
 
+export type PaletteType = 'fire' | 'blue' | 'purple';
+
 export class HanabiEffect {
 	private canvas: HTMLCanvasElement;
 	private glowCanvas: HTMLCanvasElement;
@@ -19,6 +21,31 @@ export class HanabiEffect {
 	private fpsCounter: number = 0;
 	private fpsLastTime: number = 0;
 	private currentFPS: number = 0;
+
+	// Color palettes for different explosion types
+	private readonly colorPalettes = {
+		fire: [
+			{ hue: 357, saturation: 73, lightness: 47 }, // Fire Engine Red
+			{ hue: 58, saturation: 100, lightness: 84 },  // Calamansi
+			{ hue: 46, saturation: 100, lightness: 74 },  // Jasmine
+			{ hue: 9, saturation: 100, lightness: 65 },   // Tomato
+			{ hue: 352, saturation: 44, lightness: 39 }   // Smoky Topaz
+		],
+		blue: [
+			{ hue: 220, saturation: 85, lightness: 60 },  // Deep Sky Blue
+			{ hue: 200, saturation: 90, lightness: 75 },  // Light Blue
+			{ hue: 240, saturation: 80, lightness: 50 },  // Royal Blue
+			{ hue: 180, saturation: 95, lightness: 70 },  // Cyan
+			{ hue: 210, saturation: 70, lightness: 40 }   // Dark Blue
+		],
+		purple: [
+			{ hue: 280, saturation: 85, lightness: 60 },  // Medium Purple
+			{ hue: 300, saturation: 90, lightness: 70 },  // Magenta
+			{ hue: 260, saturation: 80, lightness: 50 },  // Blue Violet
+			{ hue: 320, saturation: 75, lightness: 65 },  // Orchid
+			{ hue: 270, saturation: 65, lightness: 45 }   // Dark Violet
+		]
+	};
 
 	constructor(
 		canvas: HTMLCanvasElement,
@@ -57,14 +84,25 @@ export class HanabiEffect {
 		this.trailCtx.imageSmoothingEnabled = true; // Enable smoothing for blur effect
 	}
 
-	public explode(x: number, y: number): void {
+	public explode(x: number, y: number, palette: PaletteType = 'fire'): void {
 		// Create 200 particles for the explosion (matching original)
 		for (let i = 0; i < 200; i++) {
-			this.createParticle(x, y);
+			this.createParticle(x, y, palette);
 		}
 	}
 
-	private createParticle(x: number, y: number): void {
+	public explodeRandom(x: number, y: number): void {
+		// Randomly select a palette for the explosion
+		const palettes: PaletteType[] = ['fire', 'blue', 'purple'];
+		const randomPalette = palettes[Math.floor(Math.random() * palettes.length)];
+		this.explode(x, y, randomPalette);
+	}
+
+	public getAvailablePalettes(): PaletteType[] {
+		return Object.keys(this.colorPalettes) as PaletteType[];
+	}
+
+	private createParticle(x: number, y: number, palette: PaletteType): void {
 		const particle = this.particlePool.getParticle();
 		if (!particle) return;
 
@@ -78,23 +116,17 @@ export class HanabiEffect {
 		particle.vx = Math.cos(angle) * radius;
 		particle.vy = Math.sin(angle) * radius;
 		
-		// Use bright, vibrant colors for better sparkle effect
-		const colorType = Math.random();
-		let hue: number;
+		// Get the selected color palette
+		const colors = this.colorPalettes[palette];
 		
-		if (colorType < 0.4) {
-			// Gold/yellow particles
-			hue = 45 + Math.random() * 15;
-		} else if (colorType < 0.7) {
-			// Orange/red particles  
-			hue = 15 + Math.random() * 30;
-		} else {
-			// White/blue particles for variety
-			hue = 200 + Math.random() * 60;
-		}
+		// Randomly select a color from the specified palette
+		const baseColor = colors[Math.floor(Math.random() * colors.length)];
 		
-		const saturation = 80 + Math.random() * 20; // High saturation
-		const lightness = 80 + Math.random() * 20;  // High lightness
+		// Add slight variation to create sparkle variety while keeping the base colors recognizable
+		const hue = baseColor.hue + (Math.random() - 0.5) * 10; // ±5° hue variation
+		const saturation = Math.max(30, Math.min(100, baseColor.saturation + (Math.random() - 0.5) * 20)); // ±10% saturation variation
+		const lightness = Math.max(30, Math.min(90, baseColor.lightness + (Math.random() - 0.5) * 20)); // ±10% lightness variation
+		
 		particle.color = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 		particle.life = 1.0;
 		particle.maxLife = 1.0;

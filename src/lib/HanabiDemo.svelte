@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { HanabiEffect } from '$lib/HanabiEffect.js';
+	import { HanabiEffect, type PaletteType } from '$lib/HanabiEffect.js';
 
 	let canvasContainer: HTMLDivElement;
 	let particleCanvas: HTMLCanvasElement;
@@ -15,6 +15,8 @@
 	let showTrailOnly = false;
 	let stats = { active: 0, pooled: 0, fps: 0 };
 	let isRunning = false;
+	let selectedPalette: PaletteType = 'fire';
+	let useRandomPalette = false;
 
 	const CANVAS_WIDTH = 1200;
 	const CANVAS_HEIGHT = 800;
@@ -100,7 +102,11 @@
 		const x = event.clientX - rect.left;
 		const y = event.clientY - rect.top;
 		
-		hanabiEffect.explode(x, y);
+		if (useRandomPalette) {
+			hanabiEffect.explodeRandom(x, y);
+		} else {
+			hanabiEffect.explode(x, y, selectedPalette);
+		}
 	}
 
 	function toggleView(mode: 'particles' | 'glow' | 'trail' | 'composite') {
@@ -166,7 +172,12 @@
 		if (hanabiEffect && isRunning) {
 			const x = Math.random() * CANVAS_WIDTH;
 			const y = Math.random() * (CANVAS_HEIGHT * 0.6) + (CANVAS_HEIGHT * 0.2);
-			hanabiEffect.explode(x, y);
+			
+			if (useRandomPalette) {
+				hanabiEffect.explodeRandom(x, y);
+			} else {
+				hanabiEffect.explode(x, y, selectedPalette);
+			}
 		}
 	}
 
@@ -181,7 +192,7 @@
 <section>
 	<header>
 		<h2>Interactive Demo</h2>
-		<p><strong>Click anywhere on the canvas to create an explosion!</strong> Auto explosions occur every second.</p>
+		<p><strong>Click anywhere on the canvas to create an explosion!</strong> Auto explosions occur every second. Choose from different color palettes: Fire (reds/yellows), Blue (cool blues/cyans), Purple (violets/magentas), or Random for variety.</p>
 	</header>
 
 	<!-- Main demo layout with controls on the left -->
@@ -221,6 +232,46 @@
 				>
 					Trail Only
 				</button>
+			</div>
+
+			<hr />
+
+			<div class="palette-controls">
+				<h3>Color Palette</h3>
+				<div class="button-group" role="group">
+					<button 
+						type="button"
+						class={!useRandomPalette && selectedPalette === 'fire' ? 'primary' : 'secondary'}
+						on:click={() => { selectedPalette = 'fire'; useRandomPalette = false; }}
+						aria-pressed={!useRandomPalette && selectedPalette === 'fire'}
+					>
+						🔥 Fire
+					</button>
+					<button 
+						type="button"
+						class={!useRandomPalette && selectedPalette === 'blue' ? 'primary' : 'secondary'}
+						on:click={() => { selectedPalette = 'blue'; useRandomPalette = false; }}
+						aria-pressed={!useRandomPalette && selectedPalette === 'blue'}
+					>
+						💙 Blue
+					</button>
+					<button 
+						type="button"
+						class={!useRandomPalette && selectedPalette === 'purple' ? 'primary' : 'secondary'}
+						on:click={() => { selectedPalette = 'purple'; useRandomPalette = false; }}
+						aria-pressed={!useRandomPalette && selectedPalette === 'purple'}
+					>
+						💜 Purple
+					</button>
+					<button 
+						type="button"
+						class={useRandomPalette ? 'primary' : 'secondary'}
+						on:click={() => { useRandomPalette = true; }}
+						aria-pressed={useRandomPalette}
+					>
+						🎨 Random
+					</button>
+				</div>
 			</div>
 		</aside>
 
@@ -324,6 +375,17 @@
 	.button-group button {
 		justify-self: stretch;
 		text-align: left;
+	}
+
+	/* Palette controls styling */
+	.palette-controls {
+		margin-top: var(--pico-spacing);
+	}
+
+	.palette-controls h3 {
+		margin-bottom: calc(var(--pico-spacing) * 0.5);
+		font-size: var(--pico-font-size);
+		color: var(--pico-muted-color);
 	}
 
 	/* Stats caption - use PicoCSS card styling */

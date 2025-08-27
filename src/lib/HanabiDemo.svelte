@@ -1,4 +1,4 @@
- <script lang="ts">
+<script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { HanabiEffect } from '$lib/HanabiEffect.js';
 
@@ -177,49 +177,12 @@
 	}
 </script>
 
-<div class="hanabi-demo">
-	<div class="controls">
-		<div class="control-group">
-			<h3>Layer Visualization</h3>
-			<button on:click={() => toggleView('composite')} class:active={!showParticlesOnly && !showGlowOnly && !showTrailOnly}>
-				Composite Effect
-			</button>
-			<button on:click={() => toggleView('particles')} class:active={showParticlesOnly}>
-				Particles Only
-			</button>
-			<button on:click={() => toggleView('glow')} class:active={showGlowOnly}>
-				Glow Only
-			</button>
-			<button on:click={() => toggleView('trail')} class:active={showTrailOnly}>
-				Trail Only
-			</button>
-		</div>
-
-		<div class="stats">
-			<h3>Performance Stats</h3>
-			<p>Active Particles: {stats.active}</p>
-			<p>Pooled Particles: {stats.pooled}</p>
-		</div>
-	</div>
-
-	<div class="explanation">
-		<h3>How the Hanabi Sparkle Effect Works</h3>
-		<p>
-			This fireworks effect uses a <strong>three-layer approach</strong> with trails, particles, and sparkles:
-		</p>
-		<ol>
-			<li><strong>Trail Layer:</strong> Persistent particle trails that blur and fade over time (recreates the original AS3 effect)</li>
-			<li><strong>Particle Layer:</strong> Renders sharp, colorful particles at full resolution for the current frame</li>
-			<li><strong>Glow Layer:</strong> Copies the particle canvas and scales it DOWN to 1/4 size (pixel loss occurs here!)</li>
-			<li><strong>Sparkle Magic:</strong> The glow layer is scaled back UP 4x with pixelated rendering - surviving pixels create the sparkle</li>
-		</ol>
-		<p>
-			The trail layer adds the missing element from the original AS3 version - particles are drawn to a persistent canvas
-			that gets blurred and faded each frame, creating beautiful trailing effects behind the particles.
-		</p>
-		<p><strong>Click anywhere on the canvas to create an explosion!</strong> Auto explosions occur every 2 seconds.</p>
-		<p><em>Use the controls above to see how each layer contributes to the final effect.</em></p>
-	</div>
+<!-- Interactive Demo Section First -->
+<section>
+	<header>
+		<h2>Interactive Demo</h2>
+		<p><strong>Click anywhere on the canvas to create an explosion!</strong> Auto explosions occur every second.</p>
+	</header>
 
 	<div 
 		class="canvas-container"
@@ -235,107 +198,146 @@
 		<canvas bind:this={particleCanvas} class="particle-canvas"></canvas>
 		<canvas bind:this={compositeCanvas} class="composite-canvas"></canvas>
 	</div>
-</div>
+
+	<!-- Controls Grid -->
+	<div class="controls-grid">
+		<article class="layer-controls">
+			<header>
+				<h3>Layer Visualization</h3>
+			</header>
+			<div class="button-group" role="group">
+				<button 
+					type="button"
+					on:click={() => toggleView('composite')} 
+					class:active={!showParticlesOnly && !showGlowOnly && !showTrailOnly}
+					aria-pressed={!showParticlesOnly && !showGlowOnly && !showTrailOnly}
+				>
+					Composite Effect
+				</button>
+				<button 
+					type="button"
+					on:click={() => toggleView('particles')} 
+					class:active={showParticlesOnly}
+					aria-pressed={showParticlesOnly}
+				>
+					Particles Only
+				</button>
+				<button 
+					type="button"
+					on:click={() => toggleView('glow')} 
+					class:active={showGlowOnly}
+					aria-pressed={showGlowOnly}
+				>
+					Glow Only
+				</button>
+				<button 
+					type="button"
+					on:click={() => toggleView('trail')} 
+					class:active={showTrailOnly}
+					aria-pressed={showTrailOnly}
+				>
+					Trail Only
+				</button>
+			</div>
+		</article>
+
+		<article class="stats">
+			<header>
+				<h3>Performance Stats</h3>
+			</header>
+			<dl>
+				<dt>Active Particles</dt>
+				<dd>{stats.active}</dd>
+				<dt>Pooled Particles</dt>
+				<dd>{stats.pooled}</dd>
+			</dl>
+		</article>
+	</div>
+</section>
+
+<!-- Documentation Section After Demo -->
+<section class="documentation">
+	<header>
+		<h2>How the Hanabi Sparkle Effect Works</h2>
+	</header>
+	
+	<article>
+		<p>
+			This fireworks effect uses a <strong>three-layer approach</strong> with trails, particles, and sparkles:
+		</p>
+		<ol>
+			<li><strong>Trail Layer:</strong> Persistent particle trails that blur and fade over time (recreates the original AS3 effect)</li>
+			<li><strong>Particle Layer:</strong> Renders sharp, colorful particles at full resolution for the current frame</li>
+			<li><strong>Glow Layer:</strong> Copies the particle canvas and scales it DOWN to 1/4 size (pixel loss occurs here!)</li>
+			<li><strong>Sparkle Magic:</strong> The glow layer is scaled back UP 4x with pixelated rendering - surviving pixels create the sparkle</li>
+		</ol>
+		<p>
+			The trail layer adds the missing element from the original AS3 version - particles are drawn to a persistent canvas
+			that gets blurred and faded each frame, creating beautiful trailing effects behind the particles.
+		</p>
+		<footer>
+			<small><em>Use the controls above to see how each layer contributes to the final effect.</em></small>
+		</footer>
+	</article>
+</section>
 
 <style>
-	.hanabi-demo {
-		font-family: Arial, sans-serif;
-		max-width: 1200px;
-		margin: 0 auto;
-		padding: 20px;
-	}
-
-	.controls {
-		display: flex;
-		gap: 20px;
-		margin-bottom: 20px;
-		flex-wrap: wrap;
-	}
-
-	.control-group {
-		background: #f5f5f5;
-		padding: 15px;
-		border-radius: 8px;
-		min-width: 200px;
-	}
-
-	.control-group h3 {
-		margin: 0 0 10px 0;
-		font-size: 14px;
-		color: #333;
-	}
-
-	button {
-		background: #4CAF50;
-		border: none;
-		color: white;
-		padding: 8px 16px;
-		text-align: center;
-		text-decoration: none;
-		display: inline-block;
-		font-size: 12px;
-		margin: 2px;
-		cursor: pointer;
-		border-radius: 4px;
-		transition: background-color 0.3s;
-	}
-
-	button:hover {
-		background: #45a049;
-	}
-
-	button:disabled {
-		background: #cccccc;
-		cursor: not-allowed;
-	}
-
-	button.active {
-		background: #2196F3;
-	}
-
-	button.active:hover {
-		background: #1976D2;
-	}
-
-	.stats {
-		background: #e8f4f8;
-		padding: 15px;
-		border-radius: 8px;
-		min-width: 150px;
-	}
-
-	.stats p {
-		margin: 5px 0;
-		font-size: 12px;
-	}
-
-	.explanation {
-		background: #fff3cd;
-		padding: 20px;
-		border-radius: 8px;
-		margin-bottom: 20px;
-		border-left: 4px solid #ffc107;
-	}
-
-	.explanation h3 {
-		margin-top: 0;
-		color: #856404;
-	}
-
-	.explanation p, .explanation ol {
-		color: #856404;
-		line-height: 1.5;
-	}
-
 	.canvas-container {
 		position: relative;
 		width: 800px;
 		height: 600px;
-		border: 2px solid #333;
+		border: 2px solid var(--pico-muted-border-color);
 		cursor: crosshair;
-		margin: 0 auto;
-		border-radius: 8px;
+		margin: 0 auto 2rem auto;
+		border-radius: var(--pico-border-radius);
 		overflow: hidden;
+		background: #000;
+	}
+
+	.controls-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 1rem;
+		margin-bottom: 2rem;
+	}
+
+	.button-group {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+
+	.button-group button {
+		flex: 1;
+		min-width: 120px;
+	}
+
+	.button-group button.active {
+		background-color: var(--pico-primary-background);
+		border-color: var(--pico-primary-border);
+	}
+
+	.stats dl {
+		display: grid;
+		grid-template-columns: 1fr auto;
+		gap: 0.5rem;
+		margin: 0;
+	}
+
+	.stats dt {
+		font-weight: var(--pico-font-weight);
+	}
+
+	.stats dd {
+		text-align: right;
+		font-family: var(--pico-font-family-monospace);
+		margin: 0;
+	}
+
+	.documentation {
+		margin-top: 3rem;
+		padding-top: 2rem;
+		border-top: 1px solid var(--pico-muted-border-color);
 	}
 
 	.background-canvas, .particle-canvas, .glow-canvas, .trail-canvas, .composite-canvas {
@@ -351,16 +353,31 @@
 		opacity: 1;
 	}
 
+	/* Responsive design */
 	@media (max-width: 900px) {
 		.canvas-container {
 			width: 100%;
-			height: 450px;
-			transform: scale(0.9);
-			transform-origin: top center;
+			max-width: 800px;
+			height: auto;
+			aspect-ratio: 4/3;
 		}
 
-		.controls {
+		.controls-grid {
+			grid-template-columns: 1fr;
+		}
+
+		.button-group {
 			flex-direction: column;
+		}
+
+		.button-group button {
+			min-width: auto;
+		}
+	}
+
+	@media (max-width: 600px) {
+		.canvas-container {
+			height: 300px;
 		}
 	}
 </style>

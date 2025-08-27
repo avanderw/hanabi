@@ -130,36 +130,42 @@ export class HanabiEffect {
 	}
 
 	private render(): void {
-		// Apply fade effect to main canvas (similar to blur + color transform in AS3)
-		this.ctx.globalCompositeOperation = 'source-over';
-		this.ctx.fillStyle = `rgba(0, 0, 0, ${0.05})`; // Much lighter fade for longer trails
-		this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+		// Instead of fade, we'll manage particle trails through particle life
+		// Clear both canvases completely each frame for true transparency
+		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+		this.glowCtx.clearRect(0, 0, this.glowCanvas.width, this.glowCanvas.height);
 
-		// Render particles on main canvas
-		this.ctx.globalCompositeOperation = 'source-over'; // Normal blending for particles
+		// Render particles on main canvas (transparent background)
+		this.ctx.globalCompositeOperation = 'source-over';
 		const particles = this.particlePool.getActiveParticles();
 		
+		// First, draw all particles to main canvas
 		for (const particle of particles) {
 			const alpha = particle.life / particle.maxLife;
 			const color = this.adjustColorAlpha(particle.color, alpha); 
 
-			// Render main particle - keep it sharp and small like original
+			// Render main particle - sharp and clean
 			this.ctx.fillStyle = color;
 			this.ctx.fillRect(Math.floor(particle.x), Math.floor(particle.y), 1, 1);
 		}
 
-		// Create glow effect by drawing main canvas to glow canvas at 1/4 scale
-		// This is the exact technique from the original AS3 code
-		this.glowCtx.clearRect(0, 0, this.glowCanvas.width, this.glowCanvas.height);
+		// Now create glow by drawing particles directly to glow canvas at 1/4 scale
+		// This creates the blur effect through pixel loss during scaling
 		this.glowCtx.globalCompositeOperation = 'source-over';
 		
-		// Draw the main canvas to glow canvas at 1/4 scale
-		// This creates the natural blur/glow from pixel loss during scaling
-		this.glowCtx.drawImage(
-			this.canvas,
-			0, 0, this.canvas.width, this.canvas.height,
-			0, 0, this.glowCanvas.width, this.glowCanvas.height
-		);
+		for (const particle of particles) {
+			const alpha = particle.life / particle.maxLife;
+			// Make glow slightly more transparent and colorful
+			const color = this.adjustColorAlpha(particle.color, alpha * 0.6); 
+
+			// Draw to glow canvas at 1/4 position - this will be scaled up 4x
+			this.glowCtx.fillStyle = color;
+			this.glowCtx.fillRect(
+				Math.floor(particle.x / 4),
+				Math.floor(particle.y / 4),
+				1, 1
+			);
+		}
 	}
 
 	private adjustColorAlpha(color: string, alpha: number): string {

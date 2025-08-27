@@ -1,10 +1,11 @@
-<script lang="ts">
+ <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { HanabiEffect } from '$lib/HanabiEffect.js';
 
 	let canvasContainer: HTMLDivElement;
 	let particleCanvas: HTMLCanvasElement;
 	let glowCanvas: HTMLCanvasElement;
+	let backgroundCanvas: HTMLCanvasElement;
 	let compositeCanvas: HTMLCanvasElement;
 	let hanabiEffect: HanabiEffect;
 	
@@ -42,23 +43,37 @@
 
 	function setupCanvases() {
 		// Set canvas sizes
-		[particleCanvas, glowCanvas, compositeCanvas].forEach(canvas => {
+		[particleCanvas, glowCanvas, backgroundCanvas, compositeCanvas].forEach(canvas => {
 			canvas.width = CANVAS_WIDTH;
 			canvas.height = CANVAS_HEIGHT;
 		});
 
-		// Style canvases for layered display
-		particleCanvas.style.position = 'absolute';
-		particleCanvas.style.top = '0';
-		particleCanvas.style.left = '0';
-		particleCanvas.style.zIndex = '2';
+		// Style background canvas (bottom layer)
+		backgroundCanvas.style.position = 'absolute';
+		backgroundCanvas.style.top = '0';
+		backgroundCanvas.style.left = '0';
+		backgroundCanvas.style.zIndex = '0'; // Bottom layer
+		
+		// Fill background canvas with black
+		const bgCtx = backgroundCanvas.getContext('2d');
+		if (bgCtx) {
+			bgCtx.fillStyle = '#000';
+			bgCtx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+		}
 
+		// Style glow canvas (middle layer)
 		glowCanvas.style.position = 'absolute';
 		glowCanvas.style.top = '0';
 		glowCanvas.style.left = '0';
-		glowCanvas.style.zIndex = '1';
+		glowCanvas.style.zIndex = '1'; // Glow layer
 		// Enable smoothing for glow effect (matches PixelSnapping.NEVER + smoothing=true in AS3)
 		glowCanvas.style.imageRendering = 'auto';
+
+		// Style particle canvas (top layer)
+		particleCanvas.style.position = 'absolute';
+		particleCanvas.style.top = '0';
+		particleCanvas.style.left = '0';
+		particleCanvas.style.zIndex = '2'; // Particles on top
 
 		compositeCanvas.style.position = 'absolute';
 		compositeCanvas.style.top = '0';
@@ -104,6 +119,7 @@
 		showGlowOnly = mode === 'glow';
 
 		// Reset all canvas positioning and transforms
+		backgroundCanvas.style.left = '0';
 		particleCanvas.style.left = '0';
 		glowCanvas.style.left = '0';
 		particleCanvas.style.transform = '';
@@ -114,37 +130,43 @@
 
 		if (showLayers) {
 			// Show individual layers side by side
+			backgroundCanvas.style.display = 'block';
 			particleCanvas.style.display = 'block';
 			glowCanvas.style.display = 'block';
 			compositeCanvas.style.display = 'none';
 			
-			// Position side by side
-			particleCanvas.style.left = '0';
-			glowCanvas.style.left = `${CANVAS_WIDTH + 20}px`;
+			// Position side by side - show background, particles, then glow
+			backgroundCanvas.style.left = '0';
+			particleCanvas.style.left = `${CANVAS_WIDTH + 20}px`;
+			glowCanvas.style.left = `${(CANVAS_WIDTH + 20) * 2}px`;
 			
 			// Disable blend mode for side by side view
 			glowCanvas.style.mixBlendMode = 'normal';
 			
 		} else if (showParticlesOnly) {
-			// Show only particles
+			// Show background + particles only
+			backgroundCanvas.style.display = 'block';
 			particleCanvas.style.display = 'block';
 			glowCanvas.style.display = 'none';
 			compositeCanvas.style.display = 'none';
 			
 		} else if (showGlowOnly) {
-			// Show only glow (scaled up)
+			// Show background + glow only
+			backgroundCanvas.style.display = 'block';
 			particleCanvas.style.display = 'none';
 			glowCanvas.style.display = 'block';
 			compositeCanvas.style.display = 'none';
-			glowCanvas.style.mixBlendMode = 'normal'; // Don't blend with nothing
+			glowCanvas.style.mixBlendMode = 'normal'; // Don't blend with just background
 			
 		} else {
-			// Show composite effect - both layers overlaid
+			// Show composite effect - all layers overlaid
+			backgroundCanvas.style.display = 'block';
 			particleCanvas.style.display = 'block';
 			glowCanvas.style.display = 'block';
 			compositeCanvas.style.display = 'none';
 			
-			// Both canvases at same position for compositing
+			// All canvases at same position for compositing
+			backgroundCanvas.style.left = '0';
 			particleCanvas.style.left = '0';
 			glowCanvas.style.left = '0';
 			
@@ -248,12 +270,14 @@
 		tabindex="0"
 		on:keydown={(e) => e.key === 'Enter' && handleCanvasClick({clientX: CANVAS_WIDTH/2, clientY: CANVAS_HEIGHT/2} as MouseEvent)}
 	>
-		<canvas bind:this={particleCanvas} class="particle-canvas"></canvas>
+		<canvas bind:this={backgroundCanvas} class="background-canvas"></canvas>
 		<canvas bind:this={glowCanvas} class="glow-canvas"></canvas>
+		<canvas bind:this={particleCanvas} class="particle-canvas"></canvas>
 		<canvas bind:this={compositeCanvas} class="composite-canvas"></canvas>
 		
 		{#if showLayers}
 			<div class="layer-labels">
+				<div class="label background-label">Background</div>
 				<div class="label particles-label">Particles</div>
 				<div class="label glow-label">Glow</div>
 			</div>
@@ -355,7 +379,6 @@
 		position: relative;
 		width: 800px;
 		height: 600px;
-		background: #000;
 		border: 2px solid #333;
 		cursor: crosshair;
 		margin: 0 auto;
@@ -364,10 +387,10 @@
 	}
 
 	.canvas-container.side-by-side {
-		width: 1640px; /* 800 + 20 + 800 + 20 */
+		width: 2460px; /* 800 + 20 + 800 + 20 + 800 + 20 for 3 canvases */
 	}
 
-	.particle-canvas, .glow-canvas, .composite-canvas {
+	.background-canvas, .particle-canvas, .glow-canvas, .composite-canvas {
 		display: block;
 	}
 
@@ -398,12 +421,16 @@
 		font-weight: bold;
 	}
 
-	.particles-label {
+	.background-label {
 		margin-left: 10px;
 	}
 
-	.glow-label {
+	.particles-label {
 		margin-left: calc(800px + 30px);
+	}
+
+	.glow-label {
+		margin-left: calc((800px + 20px) * 2 + 10px);
 	}
 
 	@media (max-width: 900px) {

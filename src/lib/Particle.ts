@@ -35,8 +35,8 @@ export class Particle {
 		this.x += this.vx;
 		this.y += this.vy;
 		
-		// Update life
-		this.life -= 0.01;
+		// Update life - slower decay for longer trails
+		this.life -= 0.008; // Slower decay than before
 		
 		// Deactivate if life is depleted or velocity too low
 		if (this.life <= 0 || (Math.abs(this.vx) < 0.01 && Math.abs(this.vy) < 0.01)) {

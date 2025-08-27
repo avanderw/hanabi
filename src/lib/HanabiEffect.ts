@@ -44,7 +44,7 @@ export class HanabiEffect {
 		
 		// Configure contexts
 		this.ctx.imageSmoothingEnabled = false; // Keep particles sharp
-		this.glowCtx.imageSmoothingEnabled = true; // Allow glow to be smoothed when scaled
+		this.glowCtx.imageSmoothingEnabled = false; // Disable smoothing to lose pixels during scaling
 	}
 
 	public explode(x: number, y: number): void {
@@ -68,7 +68,7 @@ export class HanabiEffect {
 		particle.vx = Math.cos(angle) * radius;
 		particle.vy = Math.sin(angle) * radius;
 		
-		// More vibrant colors with higher saturation and lightness for better glow
+		// Use bright, vibrant colors for better sparkle effect
 		const colorType = Math.random();
 		let hue: number;
 		
@@ -83,8 +83,8 @@ export class HanabiEffect {
 			hue = 200 + Math.random() * 60;
 		}
 		
-		const saturation = 70 + Math.random() * 30; // Higher saturation
-		const lightness = 70 + Math.random() * 30;  // Higher lightness for better glow
+		const saturation = 80 + Math.random() * 20; // High saturation
+		const lightness = 80 + Math.random() * 20;  // High lightness
 		particle.color = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 		particle.life = 1.0;
 		particle.maxLife = 1.0;
@@ -130,42 +130,35 @@ export class HanabiEffect {
 	}
 
 	private render(): void {
-		// Instead of fade, we'll manage particle trails through particle life
-		// Clear both canvases completely each frame for true transparency
+		// Clear both canvases to maintain transparency
 		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 		this.glowCtx.clearRect(0, 0, this.glowCanvas.width, this.glowCanvas.height);
 
-		// Render particles on main canvas (transparent background)
+		// Draw all active particles to main canvas (transparent background)
 		this.ctx.globalCompositeOperation = 'source-over';
 		const particles = this.particlePool.getActiveParticles();
 		
-		// First, draw all particles to main canvas
 		for (const particle of particles) {
 			const alpha = particle.life / particle.maxLife;
-			const color = this.adjustColorAlpha(particle.color, alpha); 
-
-			// Render main particle - sharp and clean
+			const color = this.adjustColorAlpha(particle.color, alpha);
+			
+			// Draw sharp particle to main canvas
 			this.ctx.fillStyle = color;
 			this.ctx.fillRect(Math.floor(particle.x), Math.floor(particle.y), 1, 1);
 		}
 
-		// Now create glow by drawing particles directly to glow canvas at 1/4 scale
-		// This creates the blur effect through pixel loss during scaling
+		// Create sparkle effect by scaling down main canvas to glow canvas
+		// This causes pixel loss - some pixels get lost/merged during scaling down
+		// The pixel loss is what creates the sparkle effect!
 		this.glowCtx.globalCompositeOperation = 'source-over';
+		this.glowCtx.drawImage(
+			this.canvas,
+			0, 0, this.canvas.width, this.canvas.height,
+			0, 0, this.glowCanvas.width, this.glowCanvas.height
+		);
 		
-		for (const particle of particles) {
-			const alpha = particle.life / particle.maxLife;
-			// Make glow slightly more transparent and colorful
-			const color = this.adjustColorAlpha(particle.color, alpha * 0.6); 
-
-			// Draw to glow canvas at 1/4 position - this will be scaled up 4x
-			this.glowCtx.fillStyle = color;
-			this.glowCtx.fillRect(
-				Math.floor(particle.x / 4),
-				Math.floor(particle.y / 4),
-				1, 1
-			);
-		}
+		// The glow canvas will be scaled back up 4x with smoothing disabled (PixelSnapping.NEVER effect)
+		// This creates the aliased sparkle/glow effect from the surviving pixels
 	}
 
 	private adjustColorAlpha(color: string, alpha: number): string {

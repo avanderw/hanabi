@@ -26,7 +26,7 @@ export class Particle {
 	public update(): void {
 		if (!this.active) return;
 
-		// Apply gravity and drag (similar to original AS3)
+		// Apply gravity and drag (identical to original AS3)
 		this.vy += 0.2; // gravity
 		this.vx *= 0.9; // drag
 		this.vy *= 0.9; // drag
@@ -35,11 +35,11 @@ export class Particle {
 		this.x += this.vx;
 		this.y += this.vy;
 		
-		// Update life - slower decay for longer trails
-		this.life -= 0.008; // Slower decay than before
+		// Update life for fading effect
+		this.life -= 0.01; // Gradual fade
 		
-		// Deactivate if life is depleted or velocity too low
-		if (this.life <= 0 || (Math.abs(this.vx) < 0.01 && Math.abs(this.vy) < 0.01)) {
+		// Deactivate based on life or velocity (like original AS3)
+		if (this.life <= 0 || Math.abs(this.vx) < 0.01 || Math.abs(this.vy) < 0.01) {
 			this.active = false;
 		}
 	}

@@ -66,8 +66,8 @@
 		glowCanvas.style.top = '0';
 		glowCanvas.style.left = '0';
 		glowCanvas.style.zIndex = '1'; // Glow layer
-		// Enable smoothing for glow effect (matches PixelSnapping.NEVER + smoothing=true in AS3)
-		glowCanvas.style.imageRendering = 'auto';
+		// Use pixelated rendering to match PixelSnapping.NEVER effect - creates sparkle/aliasing
+		glowCanvas.style.imageRendering = 'pixelated';
 
 		// Style particle canvas (top layer)
 		particleCanvas.style.position = 'absolute';
@@ -244,18 +244,18 @@
 	</div>
 
 	<div class="explanation">
-		<h3>How the Hanabi Effect Works</h3>
+		<h3>How the Hanabi Sparkle Effect Works</h3>
 		<p>
-			This fireworks effect uses a <strong>two-layer approach</strong> to create the glow:
+			This fireworks effect uses a <strong>two-layer approach</strong> with pixel loss to create the sparkle:
 		</p>
 		<ol>
-			<li><strong>Particle Layer:</strong> Renders sharp, bright particles at full resolution</li>
-			<li><strong>Glow Layer:</strong> Takes the particle canvas, renders it at 1/4 scale, then scales back up to create blur</li>
+			<li><strong>Particle Layer:</strong> Renders sharp, colorful particles at full resolution</li>
+			<li><strong>Glow Layer:</strong> Copies the particle canvas and scales it DOWN to 1/4 size (pixel loss occurs here!)</li>
+			<li><strong>Sparkle Magic:</strong> The glow layer is scaled back UP 4x with pixelated rendering - surviving pixels create the sparkle</li>
 		</ol>
 		<p>
-			The key insight from the original ActionScript is that <strong>scaling down and back up loses pixel precision</strong>,
-			creating a natural blur/glow effect. The layers are then composited using blend modes (screen, lighten, etc.)
-			to create the final glowing fireworks appearance.
+			The key insight is that <strong>scaling down loses/merges pixels randomly</strong>, so only some particles contribute to the glow.
+			When scaled back up with pixelated rendering (PixelSnapping.NEVER), these surviving pixels create the characteristic sparkle effect.
 		</p>
 		<p><strong>Click anywhere on the canvas to create an explosion!</strong></p>
 		<p><em>Use the controls above to see how each layer contributes to the final effect.</em></p>
@@ -398,8 +398,8 @@
 		/* Scale up the 1/4 size glow canvas to create glow effect */
 		transform: scale(4);
 		transform-origin: top left;
-		/* Enable smooth scaling to match PixelSnapping.NEVER + smoothing=true from AS3 */
-		image-rendering: auto;
+		/* Use pixelated rendering to create sparkle effect (matches PixelSnapping.NEVER) */
+		image-rendering: pixelated;
 		opacity: 1;
 	}
 

@@ -1,6 +1,19 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { HanabiEffect, type PaletteType } from '$lib/HanabiEffect.js';
+	// Lucide icons
+	import { 
+		Layers, 
+		Sparkles, 
+		Eye, 
+		Zap, 
+		Flame, 
+		Droplets, 
+		Heart, 
+		Shuffle,
+		Play,
+		Pause
+	} from 'lucide-svelte';
 
 	let canvasContainer: HTMLDivElement;
 	let particleCanvas: HTMLCanvasElement;
@@ -186,6 +199,21 @@
 	function startAutoExplode() {
 		autoExplodeInterval = setInterval(autoExplode, 1000);
 	}
+
+	function toggleAnimation() {
+		if (isRunning) {
+			hanabiEffect.stop();
+			if (autoExplodeInterval) {
+				clearInterval(autoExplodeInterval);
+			}
+			isRunning = false;
+		} else {
+			hanabiEffect.start();
+			startAutoExplode();
+			isRunning = true;
+			updateStats();
+		}
+	}
 </script>
 
 <!-- Interactive Demo Section -->
@@ -199,6 +227,26 @@
 	<div class="demo-layout">
 		<!-- Control buttons on the left -->
 		<aside class="controls-sidebar">
+			<!-- Play/Pause Control -->
+			<div class="button-group" role="group">
+				<button 
+					type="button"
+					class={isRunning ? 'secondary' : 'primary'}
+					on:click={toggleAnimation}
+					aria-label={isRunning ? 'Pause animation' : 'Play animation'}
+				>
+					{#if isRunning}
+						<Pause size={16} />
+						Pause
+					{:else}
+						<Play size={16} />
+						Play
+					{/if}
+				</button>
+			</div>
+
+			<hr />
+
 			<div class="button-group" role="group">
 				<button 
 					type="button"
@@ -206,6 +254,7 @@
 					on:click={() => toggleView('composite')} 
 					aria-pressed={!showParticlesOnly && !showGlowOnly && !showTrailOnly}
 				>
+					<Layers size={16} />
 					Composite Effect
 				</button>
 				<button 
@@ -214,6 +263,7 @@
 					on:click={() => toggleView('particles')} 
 					aria-pressed={showParticlesOnly}
 				>
+					<Sparkles size={16} />
 					Particles Only
 				</button>
 				<button 
@@ -222,6 +272,7 @@
 					on:click={() => toggleView('glow')} 
 					aria-pressed={showGlowOnly}
 				>
+					<Eye size={16} />
 					Glow Only
 				</button>
 				<button 
@@ -230,6 +281,7 @@
 					on:click={() => toggleView('trail')} 
 					aria-pressed={showTrailOnly}
 				>
+					<Zap size={16} />
 					Trail Only
 				</button>
 			</div>
@@ -245,7 +297,8 @@
 						on:click={() => { selectedPalette = 'fire'; useRandomPalette = false; }}
 						aria-pressed={!useRandomPalette && selectedPalette === 'fire'}
 					>
-						🔥 Fire
+						<Flame size={16} />
+						Fire
 					</button>
 					<button 
 						type="button"
@@ -253,7 +306,8 @@
 						on:click={() => { selectedPalette = 'blue'; useRandomPalette = false; }}
 						aria-pressed={!useRandomPalette && selectedPalette === 'blue'}
 					>
-						💙 Blue
+						<Droplets size={16} />
+						Blue
 					</button>
 					<button 
 						type="button"
@@ -261,7 +315,8 @@
 						on:click={() => { selectedPalette = 'purple'; useRandomPalette = false; }}
 						aria-pressed={!useRandomPalette && selectedPalette === 'purple'}
 					>
-						💜 Purple
+						<Heart size={16} />
+						Purple
 					</button>
 					<button 
 						type="button"
@@ -269,7 +324,8 @@
 						on:click={() => { useRandomPalette = true; }}
 						aria-pressed={useRandomPalette}
 					>
-						🎨 Random
+						<Shuffle size={16} />
+						Random
 					</button>
 				</div>
 			</div>
@@ -375,6 +431,9 @@
 	.button-group button {
 		justify-self: stretch;
 		text-align: left;
+		display: flex;
+		align-items: center;
+		gap: calc(var(--pico-spacing) * 0.5);
 	}
 
 	/* Palette controls styling */
@@ -461,6 +520,7 @@
 
 		.button-group button {
 			text-align: center;
+			justify-content: center;
 		}
 	}
 

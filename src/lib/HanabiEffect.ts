@@ -4,8 +4,10 @@ import { Particle } from './Particle.js';
 export class HanabiEffect {
 	private canvas: HTMLCanvasElement;
 	private glowCanvas: HTMLCanvasElement;
+	private trailCanvas: HTMLCanvasElement;
 	private ctx: CanvasRenderingContext2D;
 	private glowCtx: CanvasRenderingContext2D;
+	private trailCtx: CanvasRenderingContext2D;
 	private particlePool: ParticlePool;
 	private explosionSize: number;
 	private animationId: number | null = null;
@@ -18,24 +20,28 @@ export class HanabiEffect {
 	constructor(
 		canvas: HTMLCanvasElement,
 		glowCanvas: HTMLCanvasElement,
+		trailCanvas: HTMLCanvasElement,
 		explosionSize: number = 10,
 		fps: number = 30
 	) {
 		this.canvas = canvas;
 		this.glowCanvas = glowCanvas;
+		this.trailCanvas = trailCanvas;
 		this.explosionSize = explosionSize;
 		this.targetFPS = Math.min(60, Math.max(1, fps));
 		this.frameInterval = 1000 / this.targetFPS;
 		
 		const ctx = canvas.getContext('2d');
 		const glowCtx = glowCanvas.getContext('2d');
+		const trailCtx = trailCanvas.getContext('2d');
 		
-		if (!ctx || !glowCtx) {
+		if (!ctx || !glowCtx || !trailCtx) {
 			throw new Error('Failed to get 2D context');
 		}
 		
 		this.ctx = ctx;
 		this.glowCtx = glowCtx;
+		this.trailCtx = trailCtx;
 		this.particlePool = new ParticlePool(2000);
 		
 		// Set up glow canvas (1/4 scale)
@@ -45,6 +51,7 @@ export class HanabiEffect {
 		// Configure contexts
 		this.ctx.imageSmoothingEnabled = false; // Keep particles sharp
 		this.glowCtx.imageSmoothingEnabled = false; // Disable smoothing to lose pixels during scaling
+		this.trailCtx.imageSmoothingEnabled = true; // Enable smoothing for blur effect
 	}
 
 	public explode(x: number, y: number): void {
@@ -130,35 +137,60 @@ export class HanabiEffect {
 	}
 
 	private render(): void {
-		// Clear both canvases to maintain transparency
-		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-		this.glowCtx.clearRect(0, 0, this.glowCanvas.width, this.glowCanvas.height);
+		// Step 1: Apply trail effect (blur + fade) to trail canvas
+		// This mimics the original AS3: canvas.bitmapData.applyFilter() + colorTransform()
+		this.applyTrailEffect();
 
-		// Draw all active particles to main canvas (transparent background)
+		// Step 2: Clear particle canvas (we draw fresh particles each frame)
+		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+		
+		// Step 3: Draw fresh particles to both particle canvas AND trail canvas
+		// This mimics the original AS3: canvas.bitmapData.setPixel32(p.x, p.y, p.c);
 		this.ctx.globalCompositeOperation = 'source-over';
+		this.trailCtx.globalCompositeOperation = 'source-over';
+		
 		const particles = this.particlePool.getActiveParticles();
 		
 		for (const particle of particles) {
 			const alpha = particle.life / particle.maxLife;
 			const color = this.adjustColorAlpha(particle.color, alpha);
 			
-			// Draw sharp particle to main canvas
+			// Draw to particle canvas (sharp, current frame only)
 			this.ctx.fillStyle = color;
 			this.ctx.fillRect(Math.floor(particle.x), Math.floor(particle.y), 1, 1);
+			
+			// Draw to trail canvas with reduced alpha for more subtle trails
+			// Make trail particles dimmer so they don't dominate
+			const trailAlpha = alpha * 0.6; // Slightly more visible trails
+			const trailColor = this.adjustColorAlpha(particle.color, trailAlpha);
+			this.trailCtx.fillStyle = trailColor;
+			this.trailCtx.fillRect(Math.floor(particle.x), Math.floor(particle.y), 1, 1);
 		}
 
-		// Create sparkle effect by scaling down main canvas to glow canvas
-		// This causes pixel loss - some pixels get lost/merged during scaling down
-		// The pixel loss is what creates the sparkle effect!
+		// Step 4: Create sparkle effect by scaling down particle canvas to glow canvas
+		// Clear glow canvas first
+		this.glowCtx.clearRect(0, 0, this.glowCanvas.width, this.glowCanvas.height);
+		
 		this.glowCtx.globalCompositeOperation = 'source-over';
 		this.glowCtx.drawImage(
 			this.canvas,
 			0, 0, this.canvas.width, this.canvas.height,
 			0, 0, this.glowCanvas.width, this.glowCanvas.height
 		);
+	}
+
+	private applyTrailEffect(): void {
+		// Mimic the AS3 colorTransform effect - just fade, no blur
+		// In AS3: colorTransform(.8, .8, .9, .8) reduces colors each frame
 		
-		// The glow canvas will be scaled back up 4x with smoothing disabled (PixelSnapping.NEVER effect)
-		// This creates the aliased sparkle/glow effect from the surviving pixels
+		// Apply fade effect by drawing a semi-transparent rectangle over the trail canvas
+		// This gradually reduces the alpha of existing pixels
+		this.trailCtx.globalCompositeOperation = 'destination-out';
+		this.trailCtx.fillStyle = `rgba(0, 0, 0, ${1 - 0.95})`; // Remove only 5% alpha per frame (slower fade)
+		this.trailCtx.fillRect(0, 0, this.trailCanvas.width, this.trailCanvas.height);
+		
+		// Reset composite operation for drawing particles
+		this.trailCtx.globalCompositeOperation = 'source-over';
 	}
 
 	private adjustColorAlpha(color: string, alpha: number): string {

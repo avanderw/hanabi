@@ -5,6 +5,7 @@
 	let canvasContainer: HTMLDivElement;
 	let particleCanvas: HTMLCanvasElement;
 	let glowCanvas: HTMLCanvasElement;
+	let trailCanvas: HTMLCanvasElement;
 	let backgroundCanvas: HTMLCanvasElement;
 	let compositeCanvas: HTMLCanvasElement;
 	let hanabiEffect: HanabiEffect;
@@ -12,6 +13,7 @@
 	let showLayers = false;
 	let showParticlesOnly = false;
 	let showGlowOnly = false;
+	let showTrailOnly = false;
 	let glowBlendMode = 'lighter'; // lighter is closest to ActionScript's BlendMode.ADD
 	let stats = { active: 0, pooled: 0 };
 	let isRunning = false;
@@ -19,7 +21,7 @@
 	// Update glow blend mode when changed
 	$: if (glowCanvas && glowBlendMode) {
 		// Only apply blend mode in composite view
-		if (!showLayers && !showParticlesOnly && !showGlowOnly) {
+		if (!showLayers && !showParticlesOnly && !showGlowOnly && !showTrailOnly) {
 			glowCanvas.style.mixBlendMode = glowBlendMode;
 		}
 	}
@@ -29,7 +31,7 @@
 
 	onMount(() => {
 		setupCanvases();
-		hanabiEffect = new HanabiEffect(particleCanvas, glowCanvas, 15, 30);
+		hanabiEffect = new HanabiEffect(particleCanvas, glowCanvas, trailCanvas, 15, 30);
 		// Initialize to composite view
 		toggleView('composite');
 		startAnimation();
@@ -43,7 +45,7 @@
 
 	function setupCanvases() {
 		// Set canvas sizes
-		[particleCanvas, glowCanvas, backgroundCanvas, compositeCanvas].forEach(canvas => {
+		[particleCanvas, glowCanvas, trailCanvas, backgroundCanvas, compositeCanvas].forEach(canvas => {
 			canvas.width = CANVAS_WIDTH;
 			canvas.height = CANVAS_HEIGHT;
 		});
@@ -61,11 +63,17 @@
 			bgCtx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 		}
 
-		// Style glow canvas (middle layer)
+		// Style trail canvas (layer 1 - above background)
+		trailCanvas.style.position = 'absolute';
+		trailCanvas.style.top = '0';
+		trailCanvas.style.left = '0';
+		trailCanvas.style.zIndex = '1'; // Trail layer
+
+		// Style glow canvas (layer 2 - above trail)
 		glowCanvas.style.position = 'absolute';
 		glowCanvas.style.top = '0';
 		glowCanvas.style.left = '0';
-		glowCanvas.style.zIndex = '1'; // Glow layer
+		glowCanvas.style.zIndex = '2'; // Glow layer
 		// Use pixelated rendering to match PixelSnapping.NEVER effect - creates sparkle/aliasing
 		glowCanvas.style.imageRendering = 'pixelated';
 
@@ -73,12 +81,12 @@
 		particleCanvas.style.position = 'absolute';
 		particleCanvas.style.top = '0';
 		particleCanvas.style.left = '0';
-		particleCanvas.style.zIndex = '2'; // Particles on top
+		particleCanvas.style.zIndex = '3'; // Particles on top
 
 		compositeCanvas.style.position = 'absolute';
 		compositeCanvas.style.top = '0';
 		compositeCanvas.style.left = '0';
-		compositeCanvas.style.zIndex = '3';
+		compositeCanvas.style.zIndex = '4';
 	}
 
 	function startAnimation() {
@@ -113,32 +121,38 @@
 		hanabiEffect.explode(x, y);
 	}
 
-	function toggleView(mode: 'layers' | 'particles' | 'glow' | 'composite') {
+	function toggleView(mode: 'layers' | 'particles' | 'glow' | 'trail' | 'composite') {
 		showLayers = mode === 'layers';
 		showParticlesOnly = mode === 'particles';
 		showGlowOnly = mode === 'glow';
+		showTrailOnly = mode === 'trail';
 
 		// Reset all canvas positioning and transforms
 		backgroundCanvas.style.left = '0';
 		particleCanvas.style.left = '0';
 		glowCanvas.style.left = '0';
+		trailCanvas.style.left = '0';
 		particleCanvas.style.transform = '';
 		glowCanvas.style.transform = 'scale(4)';
 		glowCanvas.style.transformOrigin = 'top left';
+		trailCanvas.style.transform = '';
 		particleCanvas.style.mixBlendMode = 'normal';
 		glowCanvas.style.mixBlendMode = glowBlendMode;
+		trailCanvas.style.mixBlendMode = 'normal';
 
 		if (showLayers) {
 			// Show individual layers side by side
 			backgroundCanvas.style.display = 'block';
 			particleCanvas.style.display = 'block';
 			glowCanvas.style.display = 'block';
+			trailCanvas.style.display = 'block';
 			compositeCanvas.style.display = 'none';
 			
-			// Position side by side - show background, particles, then glow
+			// Position side by side - show background, trail, particles, then glow
 			backgroundCanvas.style.left = '0';
-			particleCanvas.style.left = `${CANVAS_WIDTH + 20}px`;
-			glowCanvas.style.left = `${(CANVAS_WIDTH + 20) * 2}px`;
+			trailCanvas.style.left = `${CANVAS_WIDTH + 20}px`;
+			particleCanvas.style.left = `${(CANVAS_WIDTH + 20) * 2}px`;
+			glowCanvas.style.left = `${(CANVAS_WIDTH + 20) * 3}px`;
 			
 			// Disable blend mode for side by side view
 			glowCanvas.style.mixBlendMode = 'normal';
@@ -148,6 +162,7 @@
 			backgroundCanvas.style.display = 'block';
 			particleCanvas.style.display = 'block';
 			glowCanvas.style.display = 'none';
+			trailCanvas.style.display = 'none';
 			compositeCanvas.style.display = 'none';
 			
 		} else if (showGlowOnly) {
@@ -155,20 +170,31 @@
 			backgroundCanvas.style.display = 'block';
 			particleCanvas.style.display = 'none';
 			glowCanvas.style.display = 'block';
+			trailCanvas.style.display = 'none';
 			compositeCanvas.style.display = 'none';
 			glowCanvas.style.mixBlendMode = 'normal'; // Don't blend with just background
+			
+		} else if (showTrailOnly) {
+			// Show background + trail only
+			backgroundCanvas.style.display = 'block';
+			particleCanvas.style.display = 'none';
+			glowCanvas.style.display = 'none';
+			trailCanvas.style.display = 'block';
+			compositeCanvas.style.display = 'none';
 			
 		} else {
 			// Show composite effect - all layers overlaid
 			backgroundCanvas.style.display = 'block';
 			particleCanvas.style.display = 'block';
 			glowCanvas.style.display = 'block';
+			trailCanvas.style.display = 'block';
 			compositeCanvas.style.display = 'none';
 			
 			// All canvases at same position for compositing
 			backgroundCanvas.style.left = '0';
 			particleCanvas.style.left = '0';
 			glowCanvas.style.left = '0';
+			trailCanvas.style.left = '0';
 			
 			// Enable blend mode for composite effect
 			glowCanvas.style.mixBlendMode = glowBlendMode;
@@ -209,7 +235,7 @@
 
 		<div class="control-group">
 			<h3>Layer Visualization</h3>
-			<button on:click={() => toggleView('composite')} class:active={!showLayers && !showParticlesOnly && !showGlowOnly}>
+			<button on:click={() => toggleView('composite')} class:active={!showLayers && !showParticlesOnly && !showGlowOnly && !showTrailOnly}>
 				Composite Effect
 			</button>
 			<button on:click={() => toggleView('particles')} class:active={showParticlesOnly}>
@@ -217,6 +243,9 @@
 			</button>
 			<button on:click={() => toggleView('glow')} class:active={showGlowOnly}>
 				Glow Only
+			</button>
+			<button on:click={() => toggleView('trail')} class:active={showTrailOnly}>
+				Trail Only
 			</button>
 			<button on:click={() => toggleView('layers')} class:active={showLayers}>
 				Side by Side
@@ -246,16 +275,17 @@
 	<div class="explanation">
 		<h3>How the Hanabi Sparkle Effect Works</h3>
 		<p>
-			This fireworks effect uses a <strong>two-layer approach</strong> with pixel loss to create the sparkle:
+			This fireworks effect uses a <strong>three-layer approach</strong> with trails, particles, and sparkles:
 		</p>
 		<ol>
-			<li><strong>Particle Layer:</strong> Renders sharp, colorful particles at full resolution</li>
+			<li><strong>Trail Layer:</strong> Persistent particle trails that blur and fade over time (recreates the original AS3 effect)</li>
+			<li><strong>Particle Layer:</strong> Renders sharp, colorful particles at full resolution for the current frame</li>
 			<li><strong>Glow Layer:</strong> Copies the particle canvas and scales it DOWN to 1/4 size (pixel loss occurs here!)</li>
 			<li><strong>Sparkle Magic:</strong> The glow layer is scaled back UP 4x with pixelated rendering - surviving pixels create the sparkle</li>
 		</ol>
 		<p>
-			The key insight is that <strong>scaling down loses/merges pixels randomly</strong>, so only some particles contribute to the glow.
-			When scaled back up with pixelated rendering (PixelSnapping.NEVER), these surviving pixels create the characteristic sparkle effect.
+			The trail layer adds the missing element from the original AS3 version - particles are drawn to a persistent canvas
+			that gets blurred and faded each frame, creating beautiful trailing effects behind the particles.
 		</p>
 		<p><strong>Click anywhere on the canvas to create an explosion!</strong></p>
 		<p><em>Use the controls above to see how each layer contributes to the final effect.</em></p>
@@ -271,6 +301,7 @@
 		on:keydown={(e) => e.key === 'Enter' && handleCanvasClick({clientX: CANVAS_WIDTH/2, clientY: CANVAS_HEIGHT/2} as MouseEvent)}
 	>
 		<canvas bind:this={backgroundCanvas} class="background-canvas"></canvas>
+		<canvas bind:this={trailCanvas} class="trail-canvas"></canvas>
 		<canvas bind:this={glowCanvas} class="glow-canvas"></canvas>
 		<canvas bind:this={particleCanvas} class="particle-canvas"></canvas>
 		<canvas bind:this={compositeCanvas} class="composite-canvas"></canvas>
@@ -278,6 +309,7 @@
 		{#if showLayers}
 			<div class="layer-labels">
 				<div class="label background-label">Background</div>
+				<div class="label trail-label">Trail</div>
 				<div class="label particles-label">Particles</div>
 				<div class="label glow-label">Glow</div>
 			</div>
@@ -387,10 +419,10 @@
 	}
 
 	.canvas-container.side-by-side {
-		width: 2460px; /* 800 + 20 + 800 + 20 + 800 + 20 for 3 canvases */
+		width: 3280px; /* 800 + 20 + 800 + 20 + 800 + 20 + 800 + 20 for 4 canvases */
 	}
 
-	.background-canvas, .particle-canvas, .glow-canvas, .composite-canvas {
+	.background-canvas, .particle-canvas, .glow-canvas, .trail-canvas, .composite-canvas {
 		display: block;
 	}
 
@@ -425,12 +457,16 @@
 		margin-left: 10px;
 	}
 
-	.particles-label {
+	.trail-label {
 		margin-left: calc(800px + 30px);
 	}
 
-	.glow-label {
+	.particles-label {
 		margin-left: calc((800px + 20px) * 2 + 10px);
+	}
+
+	.glow-label {
+		margin-left: calc((800px + 20px) * 3 + 10px);
 	}
 
 	@media (max-width: 900px) {

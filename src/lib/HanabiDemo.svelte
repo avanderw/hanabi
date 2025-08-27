@@ -197,7 +197,7 @@
 	let autoExplodeInterval: number;
 	
 	function startAutoExplode() {
-		autoExplodeInterval = setInterval(autoExplode, 1000);
+		autoExplodeInterval = setInterval(autoExplode, 500);
 	}
 
 	function toggleAnimation() {

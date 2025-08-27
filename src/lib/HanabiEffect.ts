@@ -16,6 +16,9 @@ export class HanabiEffect {
 	private lastTime: number = 0;
 	private targetFPS: number = 30;
 	private frameInterval: number;
+	private fpsCounter: number = 0;
+	private fpsLastTime: number = 0;
+	private currentFPS: number = 0;
 
 	constructor(
 		canvas: HTMLCanvasElement,
@@ -100,6 +103,8 @@ export class HanabiEffect {
 	public start(): void {
 		if (this.animationId !== null) return;
 		this.lastTime = performance.now();
+		this.fpsLastTime = performance.now();
+		this.fpsCounter = 0;
 		this.animate();
 	}
 
@@ -118,6 +123,14 @@ export class HanabiEffect {
 			this.update();
 			this.render();
 			this.lastTime = currentTime - (deltaTime % this.frameInterval);
+			
+			// Update FPS counter
+			this.fpsCounter++;
+			if (currentTime - this.fpsLastTime >= 1000) {
+				this.currentFPS = Math.round((this.fpsCounter * 1000) / (currentTime - this.fpsLastTime));
+				this.fpsCounter = 0;
+				this.fpsLastTime = currentTime;
+			}
 		}
 
 		this.animationId = requestAnimationFrame(this.animate);
@@ -201,10 +214,11 @@ export class HanabiEffect {
 		return color;
 	}
 
-	public getStats(): { active: number; pooled: number } {
+	public getStats(): { active: number; pooled: number; fps: number } {
 		return {
 			active: this.particlePool.getActiveCount(),
-			pooled: this.particlePool.getPoolCount()
+			pooled: this.particlePool.getPoolCount(),
+			fps: this.currentFPS
 		};
 	}
 

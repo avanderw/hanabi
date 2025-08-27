@@ -13,11 +13,11 @@
 	let showParticlesOnly = false;
 	let showGlowOnly = false;
 	let showTrailOnly = false;
-	let stats = { active: 0, pooled: 0 };
+	let stats = { active: 0, pooled: 0, fps: 0 };
 	let isRunning = false;
 
-	const CANVAS_WIDTH = 800;
-	const CANVAS_HEIGHT = 600;
+	const CANVAS_WIDTH = 1200;
+	const CANVAS_HEIGHT = 800;
 
 	onMount(() => {
 		setupCanvases();
@@ -177,81 +177,82 @@
 	}
 </script>
 
-<!-- Interactive Demo Section First -->
+<!-- Interactive Demo Section -->
 <section>
 	<header>
 		<h2>Interactive Demo</h2>
 		<p><strong>Click anywhere on the canvas to create an explosion!</strong> Auto explosions occur every second.</p>
 	</header>
 
-	<div 
-		class="canvas-container"
-		bind:this={canvasContainer}
-		on:click={handleCanvasClick}
-		role="button"
-		tabindex="0"
-		on:keydown={(e) => e.key === 'Enter' && handleCanvasClick({clientX: CANVAS_WIDTH/2, clientY: CANVAS_HEIGHT/2} as MouseEvent)}
-	>
-		<canvas bind:this={backgroundCanvas} class="background-canvas"></canvas>
-		<canvas bind:this={trailCanvas} class="trail-canvas"></canvas>
-		<canvas bind:this={glowCanvas} class="glow-canvas"></canvas>
-		<canvas bind:this={particleCanvas} class="particle-canvas"></canvas>
-		<canvas bind:this={compositeCanvas} class="composite-canvas"></canvas>
-	</div>
-
-	<!-- Controls Grid -->
-	<div class="controls-grid">
-		<article class="layer-controls">
-			<header>
-				<h3>Layer Visualization</h3>
-			</header>
+	<!-- Main demo layout with controls on the left -->
+	<div class="demo-layout">
+		<!-- Control buttons on the left -->
+		<aside class="controls-sidebar">
 			<div class="button-group" role="group">
 				<button 
 					type="button"
+					class={!showParticlesOnly && !showGlowOnly && !showTrailOnly ? 'primary' : 'secondary'}
 					on:click={() => toggleView('composite')} 
-					class:active={!showParticlesOnly && !showGlowOnly && !showTrailOnly}
 					aria-pressed={!showParticlesOnly && !showGlowOnly && !showTrailOnly}
 				>
 					Composite Effect
 				</button>
 				<button 
 					type="button"
+					class={showParticlesOnly ? 'primary' : 'secondary'}
 					on:click={() => toggleView('particles')} 
-					class:active={showParticlesOnly}
 					aria-pressed={showParticlesOnly}
 				>
 					Particles Only
 				</button>
 				<button 
 					type="button"
+					class={showGlowOnly ? 'primary' : 'secondary'}
 					on:click={() => toggleView('glow')} 
-					class:active={showGlowOnly}
 					aria-pressed={showGlowOnly}
 				>
 					Glow Only
 				</button>
 				<button 
 					type="button"
+					class={showTrailOnly ? 'primary' : 'secondary'}
 					on:click={() => toggleView('trail')} 
-					class:active={showTrailOnly}
 					aria-pressed={showTrailOnly}
 				>
 					Trail Only
 				</button>
 			</div>
-		</article>
+		</aside>
 
-		<article class="stats">
-			<header>
-				<h3>Performance Stats</h3>
-			</header>
-			<dl>
-				<dt>Active Particles</dt>
-				<dd>{stats.active}</dd>
-				<dt>Pooled Particles</dt>
-				<dd>{stats.pooled}</dd>
-			</dl>
-		</article>
+		<!-- Canvas container -->
+		<div class="canvas-wrapper">
+			<div 
+				class="canvas-container"
+				bind:this={canvasContainer}
+				on:click={handleCanvasClick}
+				role="button"
+				tabindex="0"
+				on:keydown={(e) => e.key === 'Enter' && handleCanvasClick({clientX: CANVAS_WIDTH/2, clientY: CANVAS_HEIGHT/2} as MouseEvent)}
+			>
+				<canvas bind:this={backgroundCanvas} class="background-canvas"></canvas>
+				<canvas bind:this={trailCanvas} class="trail-canvas"></canvas>
+				<canvas bind:this={glowCanvas} class="glow-canvas"></canvas>
+				<canvas bind:this={particleCanvas} class="particle-canvas"></canvas>
+				<canvas bind:this={compositeCanvas} class="composite-canvas"></canvas>
+			</div>
+
+			<!-- Performance stats as caption/footer -->
+			<footer class="stats-caption">
+				<dl>
+					<dt>FPS:</dt>
+					<dd>{stats.fps}</dd>
+					<dt>Active Particles:</dt>
+					<dd>{stats.active}</dd>
+					<dt>Pooled Particles:</dt>
+					<dd>{stats.pooled}</dd>
+				</dl>
+			</footer>
+		</div>
 	</div>
 </section>
 
@@ -275,109 +276,160 @@
 			The trail layer adds the missing element from the original AS3 version - particles are drawn to a persistent canvas
 			that gets blurred and faded each frame, creating beautiful trailing effects behind the particles.
 		</p>
-		<footer>
-			<small><em>Use the controls above to see how each layer contributes to the final effect.</em></small>
-		</footer>
 	</article>
 </section>
 
 <style>
+	/* Main layout using CSS Grid instead of Flexbox for better semantic structure */
+	.demo-layout {
+		display: grid;
+		grid-template-columns: auto 1fr;
+		gap: var(--pico-spacing);
+		margin-bottom: var(--pico-spacing);
+	}
+
+	/* Use PicoCSS aside semantic styling */
+	.controls-sidebar {
+		min-width: 12rem;
+	}
+
+	/* Canvas wrapper - let PicoCSS handle most styling */
+	.canvas-wrapper {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--pico-spacing);
+	}
+
+	/* Canvas container - minimal custom styling, rely on PicoCSS */
 	.canvas-container {
 		position: relative;
-		width: 800px;
-		height: 600px;
-		border: 2px solid var(--pico-muted-border-color);
-		cursor: crosshair;
-		margin: 0 auto 2rem auto;
+		width: 100%;
+		max-width: 75rem;
+		height: auto;
+		aspect-ratio: 3/2;
+		border: var(--pico-border-width) solid var(--pico-muted-border-color);
 		border-radius: var(--pico-border-radius);
 		overflow: hidden;
 		background: #000;
+		cursor: crosshair;
 	}
 
-	.controls-grid {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 1rem;
-		margin-bottom: 2rem;
-	}
-
+	/* Button group - use PicoCSS grid utilities */
 	.button-group {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.5rem;
+		display: grid;
+		gap: calc(var(--pico-spacing) * 0.5);
 	}
 
 	.button-group button {
-		flex: 1;
-		min-width: 120px;
+		justify-self: stretch;
+		text-align: left;
 	}
 
-	.button-group button.active {
-		background-color: var(--pico-primary-background);
-		border-color: var(--pico-primary-border);
-	}
-
-	.stats dl {
-		display: grid;
-		grid-template-columns: 1fr auto;
-		gap: 0.5rem;
+	/* Stats caption - use PicoCSS card styling */
+	.stats-caption {
+		width: 100%;
+		max-width: 75rem;
+		padding: calc(var(--pico-spacing) * 0.5) var(--pico-spacing);
+		background: var(--pico-card-background-color);
+		border: var(--pico-border-width) solid var(--pico-muted-border-color);
+		border-radius: var(--pico-border-radius);
 		margin: 0;
 	}
 
-	.stats dt {
-		font-weight: var(--pico-font-weight);
+	.stats-caption dl {
+		display: flex;
+		gap: calc(var(--pico-spacing) * 1.5);
+		margin: 0;
+		font-size: var(--pico-font-size);
+		align-items: center;
+		justify-content: center;
 	}
 
-	.stats dd {
-		text-align: right;
+	.stats-caption dt {
+		margin: 0;
+	}
+
+	.stats-caption dd {
 		font-family: var(--pico-font-family-monospace);
 		margin: 0;
+		font-weight: var(--pico-font-weight);
+		color: var(--pico-primary);
 	}
 
+	/* Documentation section - use PicoCSS section spacing */
 	.documentation {
-		margin-top: 3rem;
-		padding-top: 2rem;
-		border-top: 1px solid var(--pico-muted-border-color);
+		margin-top: calc(var(--pico-spacing) * 2);
+		padding-top: calc(var(--pico-spacing) * 1.5);
+		border-top: var(--pico-border-width) solid var(--pico-muted-border-color);
 	}
 
-	.background-canvas, .particle-canvas, .glow-canvas, .trail-canvas, .composite-canvas {
+	/* Canvas layers - make them fill the container */
+	.background-canvas, 
+	.particle-canvas, 
+	.trail-canvas, 
+	.composite-canvas {
 		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: fill;
 	}
 
 	.glow-canvas {
-		/* Scale up the 1/4 size glow canvas to create glow effect */
+		display: block;
 		transform: scale(4);
 		transform-origin: top left;
-		/* Use pixelated rendering to create sparkle effect (matches PixelSnapping.NEVER) */
 		image-rendering: pixelated;
-		opacity: 1;
 	}
 
-	/* Responsive design */
-	@media (max-width: 900px) {
-		.canvas-container {
-			width: 100%;
-			max-width: 800px;
-			height: auto;
-			aspect-ratio: 4/3;
+	/* Responsive design using PicoCSS breakpoints and spacing */
+	@media (max-width: 992px) {
+		.demo-layout {
+			grid-template-columns: 1fr;
+			gap: var(--pico-spacing);
 		}
 
-		.controls-grid {
-			grid-template-columns: 1fr;
+		.controls-sidebar {
+			min-width: auto;
 		}
 
 		.button-group {
-			flex-direction: column;
+			grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
 		}
 
 		.button-group button {
-			min-width: auto;
+			text-align: center;
 		}
 	}
 
-	@media (max-width: 600px) {
+	@media (max-width: 768px) {
 		.canvas-container {
-			height: 300px;
+			aspect-ratio: 4/3;
+		}
+
+		.stats-caption {
+			width: 100%;
+		}
+
+		.stats-caption dl {
+			gap: var(--pico-spacing);
+			flex-wrap: wrap;
+		}
+	}
+
+	@media (max-width: 576px) {
+		.canvas-container {
+			aspect-ratio: 4/3;
+		}
+
+		.button-group {
+			grid-template-columns: 1fr;
+		}
+
+		.stats-caption dl {
+			flex-direction: column;
+			gap: calc(var(--pico-spacing) * 0.5);
+			text-align: center;
 		}
 	}
 </style>

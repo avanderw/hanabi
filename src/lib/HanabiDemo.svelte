@@ -19,6 +19,7 @@
 	let particleCanvas: HTMLCanvasElement;
 	let glowCanvas: HTMLCanvasElement;
 	let trailCanvas: HTMLCanvasElement;
+	let smokeCanvas: HTMLCanvasElement;
 	let backgroundCanvas: HTMLCanvasElement;
 	let compositeCanvas: HTMLCanvasElement;
 	let hanabiEffect: HanabiEffect;
@@ -26,7 +27,8 @@
 	let showParticlesOnly = false;
 	let showGlowOnly = false;
 	let showTrailOnly = false;
-	let stats = { active: 0, pooled: 0, fps: 0 };
+	let showSmokeOnly = false;
+	let stats = { active: 0, pooled: 0, smokeActive: 0, smokePooled: 0, fps: 0 };
 	let isRunning = false;
 	let selectedPalette: PaletteType = 'fire';
 	let useRandomPalette = false;
@@ -36,7 +38,7 @@
 
 	onMount(() => {
 		setupCanvases();
-		hanabiEffect = new HanabiEffect(particleCanvas, glowCanvas, trailCanvas, 15, 30);
+		hanabiEffect = new HanabiEffect(particleCanvas, glowCanvas, trailCanvas, smokeCanvas, 15, 30);
 		// Initialize to composite view
 		toggleView('composite');
 		// Always start animation and auto explode
@@ -57,7 +59,7 @@
 
 	function setupCanvases() {
 		// Set canvas sizes
-		[particleCanvas, glowCanvas, trailCanvas, backgroundCanvas, compositeCanvas].forEach(canvas => {
+		[particleCanvas, glowCanvas, trailCanvas, smokeCanvas, backgroundCanvas, compositeCanvas].forEach(canvas => {
 			canvas.width = CANVAS_WIDTH;
 			canvas.height = CANVAS_HEIGHT;
 		});
@@ -75,17 +77,23 @@
 			bgCtx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 		}
 
-		// Style trail canvas (layer 1 - above background)
+		// Style smoke canvas (layer 0.5 - above background, below trails)
+		smokeCanvas.style.position = 'absolute';
+		smokeCanvas.style.top = '0';
+		smokeCanvas.style.left = '0';
+		smokeCanvas.style.zIndex = '1'; // Smoke layer
+
+		// Style trail canvas (layer 1 - above smoke)
 		trailCanvas.style.position = 'absolute';
 		trailCanvas.style.top = '0';
 		trailCanvas.style.left = '0';
-		trailCanvas.style.zIndex = '1'; // Trail layer
+		trailCanvas.style.zIndex = '2'; // Trail layer
 
 		// Style glow canvas (layer 2 - above trail)
 		glowCanvas.style.position = 'absolute';
 		glowCanvas.style.top = '0';
 		glowCanvas.style.left = '0';
-		glowCanvas.style.zIndex = '2'; // Glow layer
+		glowCanvas.style.zIndex = '3'; // Glow layer
 		// Use pixelated rendering to match PixelSnapping.NEVER effect - creates sparkle/aliasing
 		glowCanvas.style.imageRendering = 'pixelated';
 
@@ -93,12 +101,12 @@
 		particleCanvas.style.position = 'absolute';
 		particleCanvas.style.top = '0';
 		particleCanvas.style.left = '0';
-		particleCanvas.style.zIndex = '3'; // Particles on top
+		particleCanvas.style.zIndex = '4'; // Particles on top
 
 		compositeCanvas.style.position = 'absolute';
 		compositeCanvas.style.top = '0';
 		compositeCanvas.style.left = '0';
-		compositeCanvas.style.zIndex = '4';
+		compositeCanvas.style.zIndex = '5';
 	}
 
 	function updateStats() {
@@ -122,23 +130,27 @@
 		}
 	}
 
-	function toggleView(mode: 'particles' | 'glow' | 'trail' | 'composite') {
+	function toggleView(mode: 'particles' | 'glow' | 'trail' | 'smoke' | 'composite') {
 		showParticlesOnly = mode === 'particles';
 		showGlowOnly = mode === 'glow';
 		showTrailOnly = mode === 'trail';
+		showSmokeOnly = mode === 'smoke';
 
 		// Reset all canvas positioning and transforms
 		backgroundCanvas.style.left = '0';
 		particleCanvas.style.left = '0';
 		glowCanvas.style.left = '0';
 		trailCanvas.style.left = '0';
+		smokeCanvas.style.left = '0';
 		particleCanvas.style.transform = '';
 		glowCanvas.style.transform = 'scale(4)';
 		glowCanvas.style.transformOrigin = 'top left';
 		trailCanvas.style.transform = '';
+		smokeCanvas.style.transform = '';
 		particleCanvas.style.mixBlendMode = 'normal';
 		glowCanvas.style.mixBlendMode = 'normal'; // Remove blend modes as requested
 		trailCanvas.style.mixBlendMode = 'normal';
+		smokeCanvas.style.mixBlendMode = 'normal';
 
 		if (showParticlesOnly) {
 			// Show background + particles only
@@ -146,6 +158,7 @@
 			particleCanvas.style.display = 'block';
 			glowCanvas.style.display = 'none';
 			trailCanvas.style.display = 'none';
+			smokeCanvas.style.display = 'none';
 			compositeCanvas.style.display = 'none';
 			
 		} else if (showGlowOnly) {
@@ -154,6 +167,7 @@
 			particleCanvas.style.display = 'none';
 			glowCanvas.style.display = 'block';
 			trailCanvas.style.display = 'none';
+			smokeCanvas.style.display = 'none';
 			compositeCanvas.style.display = 'none';
 			
 		} else if (showTrailOnly) {
@@ -162,6 +176,16 @@
 			particleCanvas.style.display = 'none';
 			glowCanvas.style.display = 'none';
 			trailCanvas.style.display = 'block';
+			smokeCanvas.style.display = 'none';
+			compositeCanvas.style.display = 'none';
+			
+		} else if (showSmokeOnly) {
+			// Show background + smoke only
+			backgroundCanvas.style.display = 'block';
+			particleCanvas.style.display = 'none';
+			glowCanvas.style.display = 'none';
+			trailCanvas.style.display = 'none';
+			smokeCanvas.style.display = 'block';
 			compositeCanvas.style.display = 'none';
 			
 		} else {
@@ -170,6 +194,7 @@
 			particleCanvas.style.display = 'block';
 			glowCanvas.style.display = 'block';
 			trailCanvas.style.display = 'block';
+			smokeCanvas.style.display = 'block';
 			compositeCanvas.style.display = 'none';
 			
 			// All canvases at same position for compositing
@@ -177,6 +202,7 @@
 			particleCanvas.style.left = '0';
 			glowCanvas.style.left = '0';
 			trailCanvas.style.left = '0';
+			smokeCanvas.style.left = '0';
 		}
 	}
 
@@ -250,9 +276,9 @@
 			<div class="button-group" role="group">
 				<button 
 					type="button"
-					class={!showParticlesOnly && !showGlowOnly && !showTrailOnly ? 'primary' : 'secondary'}
+					class={!showParticlesOnly && !showGlowOnly && !showTrailOnly && !showSmokeOnly ? 'primary' : 'secondary'}
 					on:click={() => toggleView('composite')} 
-					aria-pressed={!showParticlesOnly && !showGlowOnly && !showTrailOnly}
+					aria-pressed={!showParticlesOnly && !showGlowOnly && !showTrailOnly && !showSmokeOnly}
 				>
 					<Layers size={16} />
 					Composite Effect
@@ -283,6 +309,15 @@
 				>
 					<Zap size={16} />
 					Trail Only
+				</button>
+				<button 
+					type="button"
+					class={showSmokeOnly ? 'primary' : 'secondary'}
+					on:click={() => toggleView('smoke')} 
+					aria-pressed={showSmokeOnly}
+				>
+					<Droplets size={16} />
+					Smoke Only
 				</button>
 			</div>
 
@@ -342,6 +377,7 @@
 				on:keydown={(e) => e.key === 'Enter' && handleCanvasClick({clientX: CANVAS_WIDTH/2, clientY: CANVAS_HEIGHT/2} as MouseEvent)}
 			>
 				<canvas bind:this={backgroundCanvas} class="background-canvas"></canvas>
+				<canvas bind:this={smokeCanvas} class="smoke-canvas"></canvas>
 				<canvas bind:this={trailCanvas} class="trail-canvas"></canvas>
 				<canvas bind:this={glowCanvas} class="glow-canvas"></canvas>
 				<canvas bind:this={particleCanvas} class="particle-canvas"></canvas>
@@ -357,6 +393,10 @@
 					<dd>{stats.active}</dd>
 					<dt>Pooled Particles:</dt>
 					<dd>{stats.pooled}</dd>
+					<dt>Active Smoke:</dt>
+					<dd>{stats.smokeActive}</dd>
+					<dt>Pooled Smoke:</dt>
+					<dd>{stats.smokePooled}</dd>
 				</dl>
 			</footer>
 		</div>
@@ -371,14 +411,20 @@
 	
 	<article>
 		<p>
-			This fireworks effect uses a <strong>three-layer approach</strong> with trails, particles, and sparkles:
+			This fireworks effect uses a <strong>four-layer approach</strong> with smoke, trails, particles, and sparkles:
 		</p>
 		<ol>
+			<li><strong>Smoke Layer:</strong> Soft smoke particles that rise slowly from the explosion center and fade over time</li>
 			<li><strong>Trail Layer:</strong> Persistent particle trails that blur and fade over time (recreates the original AS3 effect)</li>
 			<li><strong>Particle Layer:</strong> Renders sharp, colorful particles at full resolution for the current frame</li>
 			<li><strong>Glow Layer:</strong> Copies the particle canvas and scales it DOWN to 1/4 size (pixel loss occurs here!)</li>
 			<li><strong>Sparkle Magic:</strong> The glow layer is scaled back UP 4x with pixelated rendering - surviving pixels create the sparkle</li>
 		</ol>
+		<p>
+			The smoke layer adds a realistic effect where gray smoke particles are generated near the explosion center,
+			rise slowly upward, spread horizontally, and fade away gradually. This creates depth and makes the explosions
+			feel more realistic by adding the aftermath effect that would occur with real fireworks.
+		</p>
 		<p>
 			The trail layer adds the missing element from the original AS3 version - particles are drawn to a persistent canvas
 			that gets blurred and faded each frame, creating beautiful trailing effects behind the particles.
@@ -489,6 +535,7 @@
 	.background-canvas, 
 	.particle-canvas, 
 	.trail-canvas, 
+	.smoke-canvas,
 	.composite-canvas {
 		display: block;
 		width: 100%;

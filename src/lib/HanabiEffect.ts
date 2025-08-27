@@ -1,5 +1,7 @@
 import { ParticlePool } from './ParticlePool.js';
 import { Particle } from './Particle.js';
+import { SmokeParticlePool } from './SmokeParticlePool.js';
+import { SmokeParticle } from './SmokeParticle.js';
 
 export type PaletteType = 'fire' | 'blue' | 'purple';
 
@@ -7,10 +9,13 @@ export class HanabiEffect {
 	private canvas: HTMLCanvasElement;
 	private glowCanvas: HTMLCanvasElement;
 	private trailCanvas: HTMLCanvasElement;
+	private smokeCanvas: HTMLCanvasElement;
 	private ctx: CanvasRenderingContext2D;
 	private glowCtx: CanvasRenderingContext2D;
 	private trailCtx: CanvasRenderingContext2D;
+	private smokeCtx: CanvasRenderingContext2D;
 	private particlePool: ParticlePool;
+	private smokePool: SmokeParticlePool;
 	private explosionSize: number;
 	private animationId: number | null = null;
 	private colorMultiplier: number = 0.8;
@@ -51,12 +56,14 @@ export class HanabiEffect {
 		canvas: HTMLCanvasElement,
 		glowCanvas: HTMLCanvasElement,
 		trailCanvas: HTMLCanvasElement,
+		smokeCanvas: HTMLCanvasElement,
 		explosionSize: number = 10,
 		fps: number = 30
 	) {
 		this.canvas = canvas;
 		this.glowCanvas = glowCanvas;
 		this.trailCanvas = trailCanvas;
+		this.smokeCanvas = smokeCanvas;
 		this.explosionSize = explosionSize;
 		this.targetFPS = Math.min(60, Math.max(1, fps));
 		this.frameInterval = 1000 / this.targetFPS;
@@ -64,15 +71,18 @@ export class HanabiEffect {
 		const ctx = canvas.getContext('2d');
 		const glowCtx = glowCanvas.getContext('2d');
 		const trailCtx = trailCanvas.getContext('2d');
+		const smokeCtx = smokeCanvas.getContext('2d');
 		
-		if (!ctx || !glowCtx || !trailCtx) {
+		if (!ctx || !glowCtx || !trailCtx || !smokeCtx) {
 			throw new Error('Failed to get 2D context');
 		}
 		
 		this.ctx = ctx;
 		this.glowCtx = glowCtx;
 		this.trailCtx = trailCtx;
+		this.smokeCtx = smokeCtx;
 		this.particlePool = new ParticlePool(2000);
+		this.smokePool = new SmokeParticlePool(500);
 		
 		// Set up glow canvas (1/4 scale)
 		this.glowCanvas.width = Math.floor(canvas.width / 4);
@@ -82,6 +92,7 @@ export class HanabiEffect {
 		this.ctx.imageSmoothingEnabled = false; // Keep particles sharp
 		this.glowCtx.imageSmoothingEnabled = false; // Disable smoothing to lose pixels during scaling
 		this.trailCtx.imageSmoothingEnabled = true; // Enable smoothing for blur effect
+		this.smokeCtx.imageSmoothingEnabled = true; // Enable smoothing for soft smoke
 	}
 
 	public explode(x: number, y: number, palette: PaletteType = 'fire'): void {
@@ -89,6 +100,9 @@ export class HanabiEffect {
 		for (let i = 0; i < 200; i++) {
 			this.createParticle(x, y, palette);
 		}
+		
+		// Create smoke particles near the center of explosion
+		this.createSmoke(x, y);
 	}
 
 	public explodeRandom(x: number, y: number): void {
@@ -130,6 +144,29 @@ export class HanabiEffect {
 		particle.color = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 		particle.life = 1.0;
 		particle.maxLife = 1.0;
+	}
+
+	private createSmoke(x: number, y: number): void {
+		// Create more smoke particles (12-20) for a larger puff
+		const smokeCount = 12 + Math.floor(Math.random() * 8);
+		
+		for (let i = 0; i < smokeCount; i++) {
+			const smokeParticle = this.smokePool.getParticle();
+			if (!smokeParticle) continue;
+
+			// Smoke starts with wider spread to match explosion scale
+			smokeParticle.x = x + (Math.random() - 0.5) * 40; // Wider horizontal spread
+			smokeParticle.y = y + (Math.random() - 0.5) * 25; // Wider vertical spread
+
+			// Smoke spreads more horizontally, less vertical movement
+			smokeParticle.vx = (Math.random() - 0.5) * 4; // More horizontal spread
+			smokeParticle.vy = -Math.random() * 0.2; // Very little upward movement
+			
+			// Start with larger size for bigger puff effect
+			smokeParticle.size = 3 + Math.random() * 5; // Larger initial size (3-8)
+			smokeParticle.life = 1.0;
+			smokeParticle.maxLife = 1.0;
+		}
 	}
 
 	public start(): void {
@@ -179,12 +216,18 @@ export class HanabiEffect {
 
 		// Update particles
 		this.particlePool.update(this.canvas.width, this.canvas.height);
+		
+		// Update smoke particles
+		this.smokePool.update(this.canvas.width, this.canvas.height);
 	}
 
 	private render(): void {
 		// Step 1: Apply trail effect (blur + fade) to trail canvas
 		// This mimics the original AS3: canvas.bitmapData.applyFilter() + colorTransform()
 		this.applyTrailEffect();
+
+		// Step 1.5: Render smoke particles (between trails and particles)
+		this.renderSmoke();
 
 		// Step 2: Clear particle canvas (we draw fresh particles each frame)
 		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -238,6 +281,65 @@ export class HanabiEffect {
 		this.trailCtx.globalCompositeOperation = 'source-over';
 	}
 
+	private renderSmoke(): void {
+		// Clear smoke canvas first
+		this.smokeCtx.clearRect(0, 0, this.smokeCanvas.width, this.smokeCanvas.height);
+		
+		const smokeParticles = this.smokePool.getActiveParticles();
+		if (smokeParticles.length === 0) return;
+		
+		// First pass: Draw base smoke with radial gradients
+		this.smokeCtx.globalCompositeOperation = 'source-over';
+		
+		for (const smoke of smokeParticles) {
+			// Use radial gradient for realistic cloud-like appearance
+			const gradient = this.smokeCtx.createRadialGradient(
+				smoke.x, smoke.y, 0,                    // Inner circle (center)
+				smoke.x, smoke.y, smoke.size           // Outer circle (edge)
+			);
+			
+			const alpha = smoke.getAlpha();
+			// Create soft, cloud-like gradient
+			gradient.addColorStop(0, `rgba(220, 220, 220, ${alpha * 0.7})`);   // Lighter center
+			gradient.addColorStop(0.3, `rgba(200, 200, 200, ${alpha * 0.5})`); // Mid tone
+			gradient.addColorStop(0.7, `rgba(180, 180, 180, ${alpha * 0.3})`); // Darker edge
+			gradient.addColorStop(1, `rgba(160, 160, 160, 0)`);                // Fully transparent edge
+			
+			this.smokeCtx.fillStyle = gradient;
+			this.smokeCtx.beginPath();
+			this.smokeCtx.arc(smoke.x, smoke.y, smoke.size, 0, Math.PI * 2);
+			this.smokeCtx.fill();
+		}
+		
+		// Second pass: Add some overlapping darker wisps for depth
+		this.smokeCtx.globalCompositeOperation = 'multiply';
+		
+		for (const smoke of smokeParticles) {
+			const alpha = smoke.getAlpha() * 0.3; // Much subtler
+			
+			// Create smaller, darker wisps within each smoke particle
+			const wispCount = Math.min(3, Math.floor(smoke.size / 2));
+			for (let i = 0; i < wispCount; i++) {
+				const offsetX = (Math.random() - 0.5) * smoke.size * 0.6;
+				const offsetY = (Math.random() - 0.5) * smoke.size * 0.6;
+				const wispSize = smoke.size * (0.3 + Math.random() * 0.3);
+				
+				const wispGradient = this.smokeCtx.createRadialGradient(
+					smoke.x + offsetX, smoke.y + offsetY, 0,
+					smoke.x + offsetX, smoke.y + offsetY, wispSize
+				);
+				
+				wispGradient.addColorStop(0, `rgba(140, 140, 140, ${alpha})`);
+				wispGradient.addColorStop(1, `rgba(140, 140, 140, 0)`);
+				
+				this.smokeCtx.fillStyle = wispGradient;
+				this.smokeCtx.beginPath();
+				this.smokeCtx.arc(smoke.x + offsetX, smoke.y + offsetY, wispSize, 0, Math.PI * 2);
+				this.smokeCtx.fill();
+			}
+		}
+	}
+
 	private adjustColorAlpha(color: string, alpha: number): string {
 		// Convert HSL to HSLA with alpha
 		if (color.startsWith('hsl(')) {
@@ -246,10 +348,12 @@ export class HanabiEffect {
 		return color;
 	}
 
-	public getStats(): { active: number; pooled: number; fps: number } {
+	public getStats(): { active: number; pooled: number; smokeActive: number; smokePooled: number; fps: number } {
 		return {
 			active: this.particlePool.getActiveCount(),
 			pooled: this.particlePool.getPoolCount(),
+			smokeActive: this.smokePool.getActiveCount(),
+			smokePooled: this.smokePool.getPoolCount(),
 			fps: this.currentFPS
 		};
 	}

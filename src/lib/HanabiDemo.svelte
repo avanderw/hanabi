@@ -96,6 +96,9 @@
 		glowCanvas.style.zIndex = '3'; // Glow layer
 		// Use pixelated rendering to match PixelSnapping.NEVER effect - creates sparkle/aliasing
 		glowCanvas.style.imageRendering = 'pixelated';
+		// Let CSS fill the container naturally, scale will be handled by object-fit
+		glowCanvas.style.width = '100%';
+		glowCanvas.style.height = '100%';
 
 		// Style particle canvas (top layer)
 		particleCanvas.style.position = 'absolute';
@@ -143,8 +146,7 @@
 		trailCanvas.style.left = '0';
 		smokeCanvas.style.left = '0';
 		particleCanvas.style.transform = '';
-		glowCanvas.style.transform = 'scale(4)';
-		glowCanvas.style.transformOrigin = 'top left';
+		glowCanvas.style.transform = '';
 		trailCanvas.style.transform = '';
 		smokeCanvas.style.transform = '';
 		particleCanvas.style.mixBlendMode = 'normal';
@@ -545,8 +547,9 @@
 
 	.glow-canvas {
 		display: block;
-		transform: scale(4);
-		transform-origin: top left;
+		width: 100%;
+		height: 100%;
+		object-fit: fill;
 		image-rendering: pixelated;
 	}
 

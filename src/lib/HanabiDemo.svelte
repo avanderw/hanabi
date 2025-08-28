@@ -123,8 +123,15 @@
 		if (!hanabiEffect) return;
 		
 		const rect = canvasContainer.getBoundingClientRect();
-		const x = event.clientX - rect.left;
-		const y = event.clientY - rect.top;
+		const clickX = event.clientX - rect.left;
+		const clickY = event.clientY - rect.top;
+		
+		// Convert from visual canvas coordinates to actual canvas resolution
+		const scaleX = CANVAS_WIDTH / rect.width;
+		const scaleY = CANVAS_HEIGHT / rect.height;
+		
+		const x = clickX * scaleX;
+		const y = clickY * scaleY;
 		
 		if (useRandomPalette) {
 			hanabiEffect.explodeRandom(x, y);
@@ -376,7 +383,19 @@
 				on:click={handleCanvasClick}
 				role="button"
 				tabindex="0"
-				on:keydown={(e) => e.key === 'Enter' && handleCanvasClick({clientX: CANVAS_WIDTH/2, clientY: CANVAS_HEIGHT/2} as MouseEvent)}
+				on:keydown={(e) => {
+					if (e.key === 'Enter') {
+						// Center explosion for keyboard access
+						const x = CANVAS_WIDTH / 2;
+						const y = CANVAS_HEIGHT / 2;
+						
+						if (useRandomPalette) {
+							hanabiEffect.explodeRandom(x, y);
+						} else {
+							hanabiEffect.explode(x, y, selectedPalette);
+						}
+					}
+				}}
 			>
 				<canvas bind:this={backgroundCanvas} class="background-canvas"></canvas>
 				<canvas bind:this={smokeCanvas} class="smoke-canvas"></canvas>

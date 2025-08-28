@@ -1,7 +1,5 @@
 import { ParticlePool } from './ParticlePool.js';
-import { Particle } from './Particle.js';
 import { SmokeParticlePool } from './SmokeParticlePool.js';
-import { SmokeParticle } from './SmokeParticle.js';
 
 export type PaletteType = 'fire' | 'blue' | 'purple';
 

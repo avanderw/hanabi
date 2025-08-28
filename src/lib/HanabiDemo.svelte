@@ -254,8 +254,8 @@
 <!-- Interactive Demo Section -->
 <section>
 	<header>
-		<h2>Interactive Demo</h2>
-		<p><strong>Click anywhere on the canvas to create an explosion!</strong> Auto explosions occur every second. Choose from different color palettes: Fire (reds/yellows), Blue (cool blues/cyans), Purple (violets/magentas), or Random for variety.</p>
+		<h2>Hanabi Fireworks - HTML5 Particle Effect</h2>
+		<p><strong>Click anywhere on the canvas to create an explosion!</strong> Auto explosions occur every second. Choose from different color palettes.</p>
 	</header>
 
 	<!-- Main demo layout with controls on the left -->

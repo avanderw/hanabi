@@ -54,8 +54,6 @@
 
 <svelte:head>
 	<link rel="icon" href="https://avanderw.co.za/favicon.ico" />
-	<title>Hanabi - Fireworks</title>
-	<meta name="description" content="Port of an interactive demo from old actionscript days animating a fireworks explosion." />
 </svelte:head>
 
 <header class="container">
